@@ -30,7 +30,7 @@ export default async function handler(req, res) {
 
   try {
     const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-5",
       max_tokens: 150,
       system: `You are a mood curator for an AI image archive called "mood library".
 Look at the image and return 2–5 single-word mood tags that capture its emotional atmosphere and aesthetic feeling.
