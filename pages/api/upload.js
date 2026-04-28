@@ -1,26 +1,28 @@
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+export const config = {
+  api: { bodyParser: { sizeLimit: "20mb" } },
+};
 
 export default async function handler(req, res) {
-  if (req.method === "GET") {
-    const { data, error } = await supabase
-      .from("images")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) return res.status(500).json({ error: error.message });
-    return res.status(200).json({ images: data });
-  }
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  if (req.method === "DELETE") {
-    const { id } = req.body;
-    const { error } = await supabase.from("images").delete().eq("id", id);
-    if (error) return res.status(500).json({ error: error.message });
-    return res.status(200).json({ success: true });
-  }
+  const { imageData, mediaType } = req.body;
+  if (!imageData) return res.status(400).json({ error: "No image data" });
 
-  return res.status(405).json({ error: "Method not allowed" });
+  try {
+    const formData = new FormData();
+    formData.append("file", `data:${mediaType};base64,${imageData}`);
+    formData.append("upload_preset", "mood_library");
+    formData.append("cloud_name", process.env.CLOUDINARY_CLOUD_NAME);
+
+    const cloudinaryRes = await fetch(
+      `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload`,
+      { method: "POST", body: formData }
+    );
+
+    const data = await cloudinaryRes.json();
+    if (!cloudinaryRes.ok) return res.status(500).json({ error: "Cloudinary upload failed", detail: data });
+    return res.status(200).json({ url: data.secure_url });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 }
